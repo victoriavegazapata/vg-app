@@ -309,10 +309,13 @@ function drawNowcast(p) {
   let flow, stage, ly = LAYOUT("Flow (cfs)"), ls;
   if (p.kind === "test") {
     const low = lowMask(n.vg_q);
-    flow = [line(t, n.usgs_q, "USGS observed", C.ink, { line: { width: 1.5 } }), ...vgLine(t, n.vg_q, low, "Virtual gage", C.bubblegum, { line: { width: 2.5 } }), line(t, n.nwm_ol_q, "NWM Open Loop", C.blueberry)];
+    // USGS observed is drawn last (on top) so the virtual-gage lines never hide it; legendrank keeps it first in the legend
+    flow = [...vgLine(t, n.vg_q, low, "Virtual gage", C.bubblegum, { line: { width: 2.5 } }), line(t, n.nwm_ol_q, "NWM Open Loop", C.blueberry),
+            line(t, n.usgs_q, "USGS observed", C.ink, { legendrank: 1, line: { width: 2 } })];
     ls = LAYOUT("Water level (ft)");
-    stage = [line(t, n.usgs_h, "USGS observed", C.ink, { line: { width: 1.5 } }), ...vgLine(t, n.vg_h_hand, low, "Virtual gage, HAND rating", C.grape, { line: { width: 3.5 } }),
-             ...vgLine(t, n.vg_h_usgs, low, "Virtual gage, current USGS rating", C.grape, { line: { dash: "dot" } })];
+    stage = [...vgLine(t, n.vg_h_hand, low, "Virtual gage, HAND rating", C.grape, { line: { width: 3.5 } }),
+             ...vgLine(t, n.vg_h_usgs, low, "Virtual gage, current USGS rating", C.grape, { line: { dash: "dot" } }),
+             line(t, n.usgs_h, "USGS observed", C.ink, { legendrank: 1, line: { width: 2 } })];
     nwsLines(p, ls, [...n.usgs_h, ...n.vg_h_hand, ...n.vg_h_usgs]);
   } else {
     const low = lowMask(n.vg_high);
