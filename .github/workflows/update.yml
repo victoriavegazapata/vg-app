@@ -1,0 +1,50 @@
+# Hourly update of the Virtual Gages page.
+# Every hour GitHub runs run_update.py on a free cloud computer and publishes the site/ folder with GitHub Pages.
+# If the update fails, nothing is published, so the page keeps the last good data (and shows how old it is).
+name: Hourly update
+
+on:
+  schedule:
+    - cron: "25 * * * *"   # 25 minutes after each hour (UTC), so USGS, MRMS and NWM have posted the last hour
+  workflow_dispatch:        # "Run workflow" button, to update by hand
+  push:
+    branches: [main]        # also after each change to the code or config.yaml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Fetch data and compute nowcast + forecast
+        run: python run_update.py
+        env:
+          USGS_API_KEY: ${{ secrets.USGS_API_KEY }}   # optional; empty if not set
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publish:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

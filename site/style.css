@@ -1,0 +1,75 @@
+/* Victoria's palette (brief Section 2) */
+:root {
+  --grape: #6D1F42;        /* HAND / stage */
+  --blueberry: #52A5CE;    /* NWM */
+  --olive: #AFAB23;
+  --lilacs: #D3B6D3;       /* forecast */
+  --bubblegum: #FF7BAC;    /* virtual gage */
+  --blood-orange: #EF6F3C; /* forecast */
+  --ink: #2b2230;          /* USGS observed, text */
+  --muted: #6b6068;
+  --line: #e6dde3;
+  --bg: #ffffff;
+  --panel: #faf7f9;
+  --warn-bg: #fff3ec;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+h1, h2, h3 { line-height: 1.2; }
+
+.status { background: var(--blueberry); color: var(--ink); padding: 8px 16px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.status .version { margin-left: auto; opacity: .9; }
+
+.top { padding: 14px 16px 4px; }
+.top h1 { margin: 0; font-size: 24px; color: var(--ink); border-left: 6px solid var(--blueberry); padding-left: 10px; }
+.top .sub { margin: 4px 0 0; color: var(--muted); }
+
+.layout { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; padding: 12px 16px 24px; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+.left { min-width: 0; }
+.search-label { display: block; font-weight: 600; margin-bottom: 4px; }
+#search { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+#search:focus { outline: 2px solid var(--blueberry); border-color: transparent; }
+.results { list-style: none; margin: 6px 0 10px; padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.results li { padding: 7px 10px; cursor: pointer; border-top: 1px solid var(--line); }
+.results li:first-child { border-top: 0; }
+.results li:hover, .results li.active { background: var(--panel); }
+.results li small { color: var(--muted); display: block; }
+#map { height: 380px; border-radius: 10px; border: 1px solid var(--line); }
+@media (max-width: 860px) { #map { height: 300px; } }
+.map-legend { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.dot.test { background: var(--blueberry); border: 2px solid var(--blueberry); }
+.dot.nogage { background: #fff; border: 3px solid var(--bubblegum); }
+
+.right { min-width: 0; }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+.point-head h2 { margin: 0 0 2px; font-size: 22px; }
+.point-head p { margin: 2px 0; color: var(--muted); font-size: 14px; }
+
+.section { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 14px; }
+.section h3 { margin: 0 0 6px; font-size: 18px; }
+.nowcast { border-top: 5px solid var(--bubblegum); }
+.forecast { border-top: 5px solid var(--blood-orange); background: #fffdfb; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 2px; }
+.tag.tested { background: #e3f2fa; color: var(--ink); }
+.tag.exp { background: var(--blood-orange); color: #fff; }
+.warn { background: var(--warn-bg); border-left: 4px solid var(--blood-orange); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
+.note { color: var(--muted); font-size: 13px; margin: 6px 0; }
+.flag { background: #fff0f5; border-left: 4px solid var(--bubblegum); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
+
+.chart { width: 100%; height: 300px; }
+.tables { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+@media (max-width: 700px) { .tables { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 13px; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
+
+.foot { border-top: 1px solid var(--line); padding: 16px; color: var(--muted); font-size: 13px; }
+.foot h4 { margin: 0 0 4px; color: var(--ink); font-size: 14px; }
+.foot p { margin: 4px 0 10px; max-width: 1000px; }
+.foot a { color: var(--ink); text-decoration-color: var(--blueberry); text-decoration-thickness: 2px; }
+.stale { color: var(--blood-orange); font-weight: 600; }

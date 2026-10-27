@@ -1,0 +1,6 @@
+# Made by the hourly update or by the checks; not stored in the repository
+site/data/
+data/
+__pycache__/
+.DS_Store
+VG_App_Brief_for_Claude_Code.md

@@ -1,0 +1,236 @@
+# =====================================================================
+# Virtual Gages app: ALL method settings live in this one file.
+# The method is pending mentor review. To change the method, edit here only.
+# Sources: Table2_points_and_settings.csv, VG_Rain_Bias_Physics.ipynb
+#          (Cell 121 = M13, Cell 124 = stage chain, Cell 125 = no-gage default).
+# =====================================================================
+
+method_version: "v0.1"
+status_label: "Research prototype, NOT validated, method pending review. Not an official NWS product."
+low_flow_note: "Tested only on flood peaks of 1,000 cfs or more; low flows are not tested."
+recipes_url: "https://claude.ai/artifact/12TXJuMpVARH1Wz7w1XRpH"
+local_time: {name: "AST", utc_offset_h: -4}   # Puerto Rico, no daylight saving
+
+paths:
+  # Small project files the hourly update needs (copied 2026-10-27 into the app folder, so it can run on GitHub):
+  # basin masks, HAND geometry, USGS ratings, NWPS replies.
+  inputs_dir: "{app_dir}/inputs"
+  # Saved thesis data, on Victoria's Mac only (used by the checks, not by the hourly update)
+  data_dir: "~/anaconda_projects/NWM_Forcing"
+  project_dir: "~/Documents/Claude/Projects/Virtual Gages Research"
+
+palette:
+  grape: "#6D1F42"        # HAND / stage
+  blueberry: "#52A5CE"    # NWM
+  olive: "#AFAB23"
+  lilacs: "#D3B6D3"       # forecast
+  bubblegum: "#FF7BAC"    # virtual gage
+  blood_orange: "#EF6F3C" # forecast
+  usgs_text: "#2b2230"    # USGS observed
+
+# ---------------------------------------------------------------------
+# Live data feeds (brief Section 5). Same reading rules as the notebook.
+# ---------------------------------------------------------------------
+data_sources:
+  usgs:
+    url: "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items"
+    hour_tolerance_min: 15      # hourly value = reading nearest the hour, within 15 min (Cells 49b, 55, 92)
+  mrms:
+    url: "https://noaa-mrms-pds.s3.amazonaws.com/CARIB"
+    products: ["MultiSensor_QPE_01H_Pass2_00.00", "MultiSensor_QPE_01H_Pass1_00.00"]   # Pass1 only if Pass2 is missing
+    subsamples: 5               # 5 x 5 points inside each MRMS cell (Cell 47)
+  nwm:
+    url: "https://noaa-nwm-pds.s3.amazonaws.com"
+    open_loop: "analysis_assim_puertorico_no_da/nwm.t{H}z.analysis_assim_no_da.channel_rt.tm00.puertorico.nc"
+    short_range_flow: "short_range_puertorico_no_da/nwm.t{H}z.short_range_no_da.channel_rt.f{L}.puertorico.nc"
+    short_range_rain: "forcing_short_range_puertorico/nwm.t{H}z.short_range.forcing.f{L}.puertorico.nc"
+    max_lead_h: 48
+    # NWM 1-km grid (Cell 47): Lambert projection, 300 x 110 cells, not flipped
+    grid_proj: "+proj=lcc +a=6370000 +b=6370000 +lat_1=18.1 +lat_2=18.1 +lat_0=18.1 +lon_0=-65.91 +x_0=0 +y_0=0 +units=m"
+    grid_x0: -149500
+    grid_y0: -54500
+    grid_nx: 300
+    grid_ny: 110
+    grid_step_m: 1000
+  # NWM reach at each virtual point = the reach used in the thesis (Cells 32, 49, 55, 92)
+  nwm_reach_at_point:
+    Gurabo: 800034059
+    Ciales: 800037673
+    "Loíza Y1": 800040583
+    "Loíza Y2": 800038315
+    "Arecibo junction": 800028781
+    "Río Nigua confluence": 800037940
+
+# ---------------------------------------------------------------------
+# Rain rules (MRMS hourly basin means, mm)
+# ---------------------------------------------------------------------
+rain:
+  min_coverage: 0.9          # use an MRMS value only if basin coverage >= 0.9
+  sum_hours: 24              # rain sums over 24 h
+  sum_min_hours: 20          # leave the sum blank if fewer hours have data
+  min_upstream_sum_mm: 2.0   # below this, rain ratio R = 1
+  R_max_m13: 6               # R limited to 0-6 in M13
+  R_max_m2: 4                # R limited to 0-4 in M2 (no-gage default)
+
+# ---------------------------------------------------------------------
+# Flood rule and peak error (used by the checks)
+# ---------------------------------------------------------------------
+floods:
+  min_peak_cfs: 1000
+  min_days_apart: 3
+  window_before_h: 24
+  window_after_h: 48
+  min_fraction_present: 0.9
+  leave_out_days: 10          # test A: each flood left out of learning +/- 10 days
+  selection_period: ["2020-10-14 00:00", "2023-06-30 23:00"]   # c, p learned here
+  test_b_period:    ["2025-01-01 00:00", "2026-10-05 23:00"]   # independent test
+  # grid of (c, p) tried when c and p are learned (Cell 121)
+  c_grid: {start: 0.5, stop: 3.0, step: 0.25}
+  p_grid: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+
+# ---------------------------------------------------------------------
+# Water level (HAND rating + Manning)
+# ---------------------------------------------------------------------
+stage:
+  # Current USGS ratings (exsa), downloaded with: python -m vg.usgs_ratings
+  usgs_ratings_file: "{inputs_dir}/ratings/usgs_ratings_exsa_4gages_2026-10-27.csv"
+  cfs_per_m3s: 35.3147
+  depth_grid_m: {start: 0.05, stop: 25.0, count: 2500}   # ~0.01 m steps (Cell 124)
+  # Manning n by slope class (rule L10). Per-point n values below come from
+  # Loiza/hand_n_class_rule_v5.csv ("rule n without this gage").
+  n_rule: {slope_break: 0.006, n_flat: 0.0425, a: 0.214, b: 0.240}
+
+# ---------------------------------------------------------------------
+# Experimental forecast (Victoria's choice, 2026-10-27). NOT tested.
+# It is NOT the "R2 dynamic" of VG_Forcing_Rain_Test Cells 19-25 (that one held the
+# rain ratio fixed and took upstream flow from NWM), so its NSE 0.81 does not apply.
+# ---------------------------------------------------------------------
+forecast:
+  # After the last measured hour, each upstream gage keeps its last measured value.
+  upstream_after_last_reading: "hold last value"
+  # Rain for R: MRMS up to its last posted hour, then NWM short-range forecast rain (same masks).
+  rain_after_last_mrms: "NWM short-range forecast"
+  # The forecast ends at the last hour of the NWM short-range cycle (f048).
+  # The R = 1 rule stays as the method says (upstream 24-h rain < 2 mm, or rain missing -> R = 1).
+  # A forecast peak at an hour that uses this default is flagged on the page with this note:
+  dry_day_peak_note: >-
+    This peak comes from the dry-day rule (upstream 24-h rain under 2 mm, so the rain ratio is set to 1),
+    not from forecast rain. It is not a forecast rise.
+  known_weakness: >-
+    The NWM forecast rain caught only 17-51 % of the heavy-rain hours at Gurabo (Cells 28-31).
+    Beyond about 2 h, this forecast mainly reflects the forecast rain.
+
+# ---------------------------------------------------------------------
+# NWS stages on the water-level charts (test points only, ft on the USGS gage datum)
+# Source: NWS National Water Prediction Service, https://api.water.noaa.gov/nwps/v1/gauges/<USGS site>
+# Retrieved 2026-10-27 (raw replies in inputs/nwps_raw/). Only the stages in ft are used:
+# NWPS flows at Ciales do not match the current USGS rating 27.0.
+# ---------------------------------------------------------------------
+nws_stages:
+  source: "NWS National Water Prediction Service (water.noaa.gov), retrieved 2026-10-27"
+  show_on_stage_charts: true
+  labels: {action: "NWS action stage", minor: "NWS minor flood stage", moderate: "NWS moderate flood stage", major: "NWS major flood stage"}
+
+# ---------------------------------------------------------------------
+# Points. Areas are counts of NWM 1-km cells in the basin masks (km²); mask files are in inputs/masks/.
+# r = (A_point - A_a - A_b) / (A_a + A_b)
+# ---------------------------------------------------------------------
+test_points:
+  Gurabo:
+    gage_a: {name: "El Mango", site: "50055750"}
+    gage_b: {name: "Valenciano", site: "50056400"}
+    gage_point: {name: "Gurabo", site: "50057000"}
+    lat_lon: [18.2565, -65.9677]       # USGS gage location (NWPS reply, 2026-10-27)
+    mask_file: "basin_masks_1km.npz"
+    K_h: 1
+    lag_h: 2
+    c: 0.5
+    p: 2.0
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_gurabo_50057000.csv"
+    hand_slope: 0.00125
+    manning_n: 0.0413
+    datum_fit_cfs: [5, 59700]      # c offset fitted over this flow range of the USGS rating
+    usgs_rating_id: "46.0"
+    nws_lid: "GURP4"
+    nws_stages_ft: {action: 11, minor: 20, moderate: 24, major: 30}
+  Ciales:
+    gage_a: {name: "Bauta", site: "50034000"}
+    gage_b: {name: "Morovis", site: "50031000"}
+    gage_point: {name: "Ciales", site: "50035000"}
+    lat_lon: [18.3224, -66.4596]       # USGS gage location (NWPS reply, 2026-10-27)
+    mask_file: "basin_masks_1km.npz"
+    K_h: 1
+    lag_h: 0
+    c: 1.25
+    p: 1.5
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_ciales_50035000.csv"
+    hand_slope: 0.00406
+    manning_n: 0.0425
+    datum_fit_cfs: [50, 70100]
+    usgs_rating_id: "27.0"
+    nws_lid: "CIAP4"
+    nws_stages_ft: {action: 8, minor: 10, moderate: 12, major: 16}
+  "Loíza Y1":
+    gage_a: {name: "Cayaguas", site: "50051310"}
+    gage_b: {name: "Qda Arenas", site: "50050900"}
+    gage_point: {name: "HWY 183", site: "50051800"}
+    lat_lon: [18.1837, -65.9611]       # USGS gage location (NWPS reply, 2026-10-27)
+    mask_file: "basin_masks_loiza_1km.npz"
+    K_h: 1
+    lag_h: 1
+    c: 1.0
+    p: 1.5
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_loiza_HWY_183.csv"
+    hand_slope: 0.0031
+    manning_n: 0.0425
+    datum_fit_cfs: [5, 34200]
+    usgs_rating_id: "6.0"
+    nws_lid: "SLNP4"
+    nws_stages_ft: {action: 11, minor: 14, moderate: 21, major: 28}
+  "Loíza Y2":
+    gage_a: {name: "HWY 183", site: "50051800"}
+    gage_b: {name: "Turabo", site: "50053025"}
+    gage_point: {name: "Caguas", site: "50055000"}
+    lat_lon: [18.2407, -66.0092]       # USGS gage location (NWPS reply, 2026-10-27)
+    mask_file: "basin_masks_loiza_1km.npz"
+    K_h: 0
+    lag_h: 0
+    c: 1.75
+    p: 1.25
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_loiza_Caguas.csv"
+    hand_slope: 0.00306
+    manning_n: 0.0413
+    datum_fit_cfs: [5, 62500]
+    usgs_rating_id: "30.1"
+    nws_lid: "CAGP4"
+    nws_stages_ft: {action: 9, minor: 16, moderate: 19, major: 23}
+
+# Points without a gage: no-gage default M2 (Cell 125), shown as a range.
+no_gage_default:
+  K_h: 1
+  lag_h: 1
+  fill_gap_max_h: 3            # fill gaps <= 3 h by straight line before summing
+  typical_error: 0.301         # range = low x (1 - 0.301) to high x (1 + 0.301)
+
+no_gage_points:
+  "Arecibo junction":
+    gage_a: {name: "Tanama", site: "50028400"}
+    gage_b: {name: "San Pedro", site: "50027600"}
+    point_mask_name: "Junction"
+    lat_lon: [18.4384, -66.7007]       # Cell 55, NWM reach 800028781
+    mask_file: "basin_masks_arecibo_1km.npz"
+    # Two area ratios (exact values recovered from the saved Cell 125 output)
+    r_values: {"DEM areas": 0.0341204933, "USGS gage areas": 0.2699294637}
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_arecibo_Junction.csv"
+    hand_slope: 0.00143
+    manning_n_options: [0.0225, 0.0311, 0.0425]
+  "Río Nigua confluence":
+    gage_a: {name: "Lapa", site: "50100200"}
+    gage_b: {name: "Majada", site: "50100450"}
+    point_mask_name: "Confluence"
+    lat_lon: [18.0324, -66.2444]       # Cell 92, NWM reach 800037940
+    mask_file: "basin_masks_nigua_1km.npz"
+    r_values: {"1-km basins": 0.2835820896, "lidar DEM confluence + USGS gage areas": 0.1730999173}
+    hand_geometry: "{inputs_dir}/hand/hand_geometry_nigua_Confluence.csv"
+    hand_slope: 0.01046
+    manning_n_options: [0.025, 0.040]

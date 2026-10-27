@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puerto Rico Virtual Gages</title>
+  <meta name="description" content="Research prototype: virtual gage nowcast and experimental forecast at 6 points in Puerto Rico. NOT validated. Not an official NWS product.">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+  <!-- Status rules (brief Section 1): always visible -->
+  <div class="status" role="note">
+    <strong>Research prototype.</strong> <span id="status-text">NOT validated, method pending review. Not an official NWS product.</span>
+    <span class="version">Method <span id="method-version">v0.1</span></span>
+  </div>
+
+  <header class="top">
+    <h1>Puerto Rico Virtual Gages</h1>
+    <p class="sub">Search or click a point to see its nowcast and an experimental forecast.
+      <span id="updated"></span></p>
+  </header>
+
+  <main class="layout">
+    <section class="left" aria-label="Map and search">
+      <label class="search-label" for="search">Search a point, river or USGS gage number</label>
+      <input id="search" type="search" placeholder="e.g. Gurabo, Loíza, 50057000" autocomplete="off">
+      <ul id="results" class="results"></ul>
+      <div id="map" aria-label="Map of the 6 points"></div>
+      <div class="map-legend">
+        <span><i class="dot test"></i> Test point (USGS gage at the point, shown for comparison)</span>
+        <span><i class="dot nogage"></i> Point without a gage (shown as a range)</span>
+      </div>
+    </section>
+
+    <section class="right" id="panel" aria-live="polite">
+      <p class="empty">Pick a point on the map or in the search box.</p>
+    </section>
+  </main>
+
+  <footer class="foot" id="footer"></footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.35.2/plotly-basic.min.js"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
