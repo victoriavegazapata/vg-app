@@ -139,7 +139,8 @@ def build(cfg, now):
     return {
         "generated": _when(pd.Timestamp.now(tz="UTC"), cfg), "now": _when(now, cfg),
         "local_time": cfg["local_time"]["name"], "method_version": cfg["method_version"],
-        "status_label": cfg["status_label"], "low_flow_note": cfg["low_flow_note"], "recipes_url": cfg["recipes_url"],
+        "status_label": cfg["status_label"], "low_flow_note": cfg["low_flow_note"],
+        "low_flow_display": cfg["low_flow_display"], "recipes_url": cfg["recipes_url"],
         "palette": cfg["palette"],
         "nws_stages": {"source": cfg["nws_stages"]["source"], "labels": cfg["nws_stages"]["labels"],
                        "show": cfg["nws_stages"]["show_on_stage_charts"]},

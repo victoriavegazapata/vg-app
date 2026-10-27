@@ -146,6 +146,7 @@ function show(id) {
     <section class="section nowcast">
       <h3>Nowcast <span class="tag tested">tested on past floods</span></h3>
       <p class="note">Last 48 h up to now. ${test ? "" : "No gage here: the virtual gage is shown as a range."} ${esc(DATA.low_flow_note)}</p>
+      ${lowNote(lowMask(test ? p.nowcast.vg_q : p.nowcast.vg_high))}
       <div id="nc-flow" class="chart"></div>
       <div id="nc-stage" class="chart"></div>
       <div class="tables">${nowTable(p)}${updateTable(p)}</div>
@@ -157,6 +158,7 @@ function show(id) {
         rain after the last MRMS hour is the NWM short-range forecast rain. ${esc(DATA.forecast_info.known_weakness)}</div>
       ${p.forecast.peak.dry_day ? `<div class="flag"><strong>Peak flag:</strong> ${esc(DATA.forecast_info.dry_day_note)}</div>` : ""}
       ${p.forecast.dry_day.some(Boolean) ? `<p class="note marker-note"><span class="ring"></span> Open circles = hours using the dry-day rule: ${esc(DATA.forecast_info.dry_day_marker_note)}</p>` : ""}
+      ${lowNote(lowMask(test ? p.forecast.vg_q : p.forecast.vg_high))}
       <div id="fc-flow" class="chart"></div>
       <div id="fc-stage" class="chart"></div>
       <div class="tables">${peakTable(p)}${cycleTable(p)}</div>
@@ -226,6 +228,57 @@ function line(x, y, name, color, extra = {}) {
   const { line: style = {}, ...rest } = extra;
   return { x, y, name, type: "scatter", mode: "lines", connectgaps: false, ...rest, line: { color, width: 2, ...style } };
 }
+// ---------- low-flow display rule (config: low_flow_display). Drawing only; the numbers are unchanged.
+// Hours whose virtual-gage flow is below the tested flood threshold
+const lowMask = (q) => q.map((v) => v !== null && v < DATA.low_flow_display.threshold_cfs);
+// Split one series into the part at/above the threshold and the part below; the two parts touch at each crossing
+function splitLow(y, low) {
+  const hi = y.map((v, i) => (low[i] ? null : v)), lo = y.map((v, i) => (low[i] ? v : null));
+  for (let i = 0; i < y.length; i++) {
+    if (low[i] && i > 0 && !low[i - 1]) lo[i - 1] = y[i - 1];
+    if (low[i] && i + 1 < y.length && !low[i + 1]) lo[i + 1] = y[i + 1];
+  }
+  return { hi, lo };
+}
+// A virtual-gage line: solid where flow ≥ threshold, faded and dashed where below
+function vgLine(x, y, low, name, color, extra = {}) {
+  const { hi, lo } = splitLow(y, low), { line: style = {} } = extra;
+  const out = [line(x, hi, name, color, extra)];
+  if (low.some(Boolean)) {
+    // left out of the legend: the low-flow note above the chart explains the faded dashed lines
+    out.push(line(x, lo, `${name} (low flow, outside tested range)`, color, { opacity: 0.45, showlegend: false, line: { ...style, dash: style.dash === "dot" ? "dot" : "dash" } }));
+  }
+  return out;
+}
+// A virtual-gage band: normal fill where flow ≥ threshold, faded fill with a dashed edge where below.
+// Each stretch is drawn as its own piece (a band with gaps would fill across them).
+function vgBand(x, lo, hi, low, name, color, alpha) {
+  const out = [];
+  let i = 0, shown = { hi: false, lo: false };
+  while (i < x.length) {
+    let j = i;
+    while (j + 1 < x.length && low[j + 1] === low[i]) j++;
+    const k = Math.min(j + 1, x.length - 1);  // include the next hour so neighbouring pieces touch
+    const sl = (a) => a.slice(i, k + 1), isLow = low[i];
+    const piece = band(sl(x), sl(lo), sl(hi), isLow ? `${name} (low flow, outside tested range)` : name, color, isLow ? alpha * 0.4 : alpha);
+    const top = piece[1];
+    top.legendgroup = name;
+    top.showlegend = !isLow && !shown.hi;  // one legend entry; the low-flow note explains the faded parts
+    if (isLow) top.line = { width: 1, dash: "dash", color: rgba(color, 0.8) };
+    shown[isLow ? "lo" : "hi"] = true;
+    out.push(...piece);
+    i = j + 1;
+  }
+  if (!shown.hi && out.length) out[1].showlegend = true, out[1].name = name;  // all low: still one legend entry
+  return out;
+}
+// Depth band low edge: where the low end is below the HAND table (no value), shade down to 0 m (true depth is < table minimum)
+const depthLow = (lo, hi) => lo.map((v, i) => (v === null && hi[i] !== null ? 0 : v));
+
+function lowNote(low) {
+  return low.some(Boolean) ? `<p class="note lowflow"><span class="dashline"></span> Faded dashed parts: ${esc(DATA.low_flow_display.note)}</p>` : "";
+}
+
 function band(x, lo, hi, name, color, alpha) {
   return [
     { x, y: lo, type: "scatter", mode: "lines", line: { width: 0 }, showlegend: false, hoverinfo: "skip", connectgaps: false },
@@ -251,19 +304,21 @@ function drawNowcast(p) {
   const n = p.nowcast, t = n.t;
   let flow, stage, ly = LAYOUT("Flow (cfs)"), ls;
   if (p.kind === "test") {
-    flow = [line(t, n.usgs_q, "USGS observed", C.ink, { line: { width: 1.5 } }), line(t, n.vg_q, "Virtual gage", C.bubblegum, { line: { width: 2.5 } }), line(t, n.nwm_ol_q, "NWM Open Loop", C.blueberry)];
+    const low = lowMask(n.vg_q);
+    flow = [line(t, n.usgs_q, "USGS observed", C.ink, { line: { width: 1.5 } }), ...vgLine(t, n.vg_q, low, "Virtual gage", C.bubblegum, { line: { width: 2.5 } }), line(t, n.nwm_ol_q, "NWM Open Loop", C.blueberry)];
     ls = LAYOUT("Water level (ft)");
-    stage = [line(t, n.usgs_h, "USGS observed", C.ink, { line: { width: 1.5 } }), line(t, n.vg_h_hand, "Virtual gage, HAND rating", C.grape, { line: { width: 3.5 } }),
-             line(t, n.vg_h_usgs, "Virtual gage, current USGS rating", C.grape, { line: { dash: "dot" } })];
+    stage = [line(t, n.usgs_h, "USGS observed", C.ink, { line: { width: 1.5 } }), ...vgLine(t, n.vg_h_hand, low, "Virtual gage, HAND rating", C.grape, { line: { width: 3.5 } }),
+             ...vgLine(t, n.vg_h_usgs, low, "Virtual gage, current USGS rating", C.grape, { line: { dash: "dot" } })];
     nwsLines(p, ls, [...n.usgs_h, ...n.vg_h_hand, ...n.vg_h_usgs]);
   } else {
-    flow = [...band(t, n.band_low, n.band_high, "Typical error (±30.1 %)", C.bubblegum, 0.18), ...band(t, n.vg_low, n.vg_high, "Virtual gage range", C.bubblegum, 0.55),
+    const low = lowMask(n.vg_high);
+    flow = [...band(t, n.band_low, n.band_high, "Typical error (±30.1 %)", C.bubblegum, 0.18), ...vgBand(t, n.vg_low, n.vg_high, low, "Virtual gage range", C.bubblegum, 0.55),
             line(t, n.nwm_ol_q, "NWM Open Loop", C.blueberry)];
     ls = LAYOUT("Depth above DEM channel (m)");
-    stage = band(t, n.depth_low, n.depth_high, "Virtual gage depth range (all Manning n)", C.grape, 0.45);
+    stage = vgBand(t, depthLow(n.depth_low, n.depth_high), n.depth_high, low, "Virtual gage depth range (all Manning n)", C.grape, 0.45);
     if (n.below_table.some(Boolean)) {
       ls.annotations = [{ xref: "paper", yref: "paper", x: 0.01, y: 0.95, xanchor: "left", showarrow: false,
-        text: `Blank or open at the bottom = flow below the HAND table (depth &lt; ${fmt(p.hand_min_depth_m, 2)} m)`, font: { size: 11, color: C.muted } }];
+        text: `Band down to 0 = low end below the HAND table (depth &lt; ${fmt(p.hand_min_depth_m, 2)} m); blank = whole range below it`, font: { size: 11, color: C.muted } }];
     }
   }
   Plotly.newPlot("nc-flow", flow, ly, CONFIG);
@@ -280,19 +335,21 @@ function drawForecast(p) {
   let flow, stage, ly = LAYOUT("Flow (cfs)"), ls;
   if (p.kind === "test") {
     const dryY = f.vg_q.filter((_, i) => f.dry_day[i]);
-    flow = [line(t, f.vg_q, "Virtual gage forecast", C.orange, { line: { width: 2.5 } }), line(t, f.nwm_sr_q, "NWM short-range forecast", C.blueberry, { line: { dash: "dash" } })];
+    const low = lowMask(f.vg_q);
+    flow = [...vgLine(t, f.vg_q, low, "Virtual gage forecast", C.orange, { line: { width: 2.5 } }), line(t, f.nwm_sr_q, "NWM short-range forecast", C.blueberry, { line: { dash: "dash" } })];
     if (dryX.length) flow.push({ x: dryX, y: dryY, type: "scatter", mode: "markers", name: "Hour using dry-day rule (R = 1)", marker: { color: "#fff", size: 7, line: { color: C.orange, width: 2 } }, hoverinfo: "skip" });
     ls = LAYOUT("Water level (ft)");
-    stage = [line(t, f.vg_h_hand, "Virtual gage forecast, HAND rating", C.orange, { line: { width: 2.5 } }),
-             line(t, f.vg_h_usgs, "Virtual gage forecast, current USGS rating", C.orange, { line: { dash: "dot" } })];
+    stage = [...vgLine(t, f.vg_h_hand, low, "Virtual gage forecast, HAND rating", C.orange, { line: { width: 2.5 } }),
+             ...vgLine(t, f.vg_h_usgs, low, "Virtual gage forecast, current USGS rating", C.orange, { line: { dash: "dot" } })];
     nwsLines(p, ls, [...f.vg_h_hand, ...f.vg_h_usgs]);
   } else {
     const dryY = f.vg_high.filter((_, i) => f.dry_day[i]);
-    flow = [...band(t, f.band_low, f.band_high, "Typical error (±30.1 %)", C.lilacs, 0.5), ...band(t, f.vg_low, f.vg_high, "Virtual gage forecast range", C.orange, 0.5),
+    const low = lowMask(f.vg_high);
+    flow = [...band(t, f.band_low, f.band_high, "Typical error (±30.1 %)", C.lilacs, 0.5), ...vgBand(t, f.vg_low, f.vg_high, low, "Virtual gage forecast range", C.orange, 0.5),
             line(t, f.nwm_sr_q, "NWM short-range forecast", C.blueberry, { line: { dash: "dash" } })];
     if (dryX.length) flow.push({ x: dryX, y: dryY, type: "scatter", mode: "markers", name: "Hour using dry-day rule (R = 1)", marker: { color: "#fff", size: 7, line: { color: C.orange, width: 2 } }, hoverinfo: "skip" });
     ls = LAYOUT("Depth above DEM channel (m)");
-    stage = band(t, f.depth_low, f.depth_high, "Virtual gage forecast depth range", C.orange, 0.45);
+    stage = vgBand(t, depthLow(f.depth_low, f.depth_high), f.depth_high, low, "Virtual gage forecast depth range", C.orange, 0.45);
   }
   // grey shade after "now + horizon" (config: forecast.reliable_horizon_h): less reliable, not tested
   const fi = DATA.forecast_info, h0 = shiftH(DATA.now, fi.reliable_horizon_h);

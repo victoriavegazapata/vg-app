@@ -8,6 +8,11 @@
 method_version: "v0.1"
 status_label: "Research prototype, NOT validated, method pending review. Not an official NWS product."
 low_flow_note: "Tested only on flood peaks of 1,000 cfs or more; low flows are not tested."
+# Display rule only (no method change): virtual-gage flow below this is drawn faded and dashed, with the note below.
+# 1,000 cfs = the flood threshold the method was tested on (floods: USGS peaks >= 1,000 cfs).
+low_flow_display:
+  threshold_cfs: 1000
+  note: "Low flow – outside the tested range. Small upstream pulses may arrive later and smaller than shown."
 recipes_url: "https://claude.ai/artifact/12TXJuMpVARH1Wz7w1XRpH"
 local_time: {name: "AST", utc_offset_h: -4}   # Puerto Rico, no daylight saving
 

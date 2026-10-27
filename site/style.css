@@ -85,3 +85,5 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .flagmark { display: inline-block; font-size: 12px; font-weight: 600; color: var(--blood-orange); white-space: nowrap; cursor: help; }
 .marker-note { margin: 6px 0 0; }
 .ring { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--blood-orange); border-radius: 50%; background: #fff; vertical-align: -1px; }
+.lowflow { margin: 6px 0 0; }
+.dashline { display: inline-block; width: 22px; border-top: 2px dashed var(--muted); vertical-align: 3px; opacity: .8; }
