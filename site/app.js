@@ -34,8 +34,48 @@ function start() {
   buildSearch();
   buildFooter();
   const id = decodeURIComponent(location.hash.slice(1));
-  if (DATA.points.some((p) => p.id === id)) show(id);
-  window.addEventListener("hashchange", () => { const h = decodeURIComponent(location.hash.slice(1)); if (h) show(h); });
+  if (DATA.points.some((p) => p.id === id)) show(id); else overview();
+  window.addEventListener("hashchange", () => { const h = decodeURIComponent(location.hash.slice(1)); if (h) show(h); else overview(); });
+}
+
+// ---------- overview of all points (shown until a point is picked)
+function overview() {
+  for (const m of Object.values(MARKERS)) m.setStyle({ radius: 9 });
+  MAP.flyTo([18.22, -66.4], 9, { duration: 0.6 });  // back to the whole island
+  const rows = DATA.points.map((p) => {
+    const n = p.nowcast.now, k = p.forecast.peak, test = p.kind === "test";
+    const flow = test ? `${fmt(n.vg_q)} cfs` : `${fmt(n.vg_low)}–${fmt(n.vg_high)} cfs`;
+    const level = test
+      ? (n.vg_h_hand === null && n.vg_q !== null ? "below HAND table" : `${fmt(n.vg_h_hand, 2)} ft`)
+      : (n.below_table ? `&lt; ${fmt(p.hand_min_depth_m, 2)} m` : `${fmt(n.depth_low, 2)}–${fmt(n.depth_high, 2)} m`);
+    const obs = test ? `${fmt(n.usgs_q)} cfs` : "no gage";
+    const peak = test ? `${fmt(k.vg_q)} cfs` : `${fmt(k.vg_low)}–${fmt(k.vg_high)} cfs`;
+    return `<tr data-id="${p.id}" tabindex="0">
+      <td><strong>${esc(p.name)}</strong><br><small>${test ? "Test point" : "No gage (range)"}</small></td>
+      <td class="num">${flow}<br><small>${when(n.vg_time).replace(/^\d{4}-/, "")}</small></td>
+      <td class="num">${level}</td>
+      <td class="num">${obs}</td>
+      <td class="num fc">${peak}${k.dry_day ? " ⚑" : ""}<br><small>${when(k.time).replace(/^\d{4}-/, "")}</small></td>
+    </tr>`;
+  }).join("");
+  $("#panel").innerHTML = `
+    <section class="section overview">
+      <h3>All points</h3>
+      <p class="note">Click a row or a point on the map for its charts. ${esc(DATA.low_flow_note)}</p>
+      <table class="ov">
+        <thead>
+          <tr><th rowspan="2">Point</th><th colspan="3" class="grp nc">Nowcast (virtual gage, now)</th><th class="grp fc">Forecast <span class="tag exp">EXPERIMENTAL</span></th></tr>
+          <tr><th>Flow</th><th>Water level / depth</th><th>USGS observed</th><th class="fc">Expected peak</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="note">⚑ = forecast peak comes from the dry-day rule (R = 1), not from forecast rain. Forecast: NWM cycle ${esc(DATA.forecast_info.nwm_cycle_utc)}.
+        Water level at test points is in ft on the USGS gage datum; at points without a gage, depth above the DEM channel in m.</p>
+    </section>`;
+  document.querySelectorAll(".ov tbody tr").forEach((tr) => {
+    tr.addEventListener("click", () => { location.hash = tr.dataset.id; });
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter") location.hash = tr.dataset.id; });
+  });
 }
 
 // ---------- map
@@ -92,6 +132,7 @@ function show(id) {
   const test = p.kind === "test";
   $("#panel").innerHTML = `
     <div class="point-head">
+      <p><a href="#" class="back">← All points</a></p>
       <h2>${esc(p.name)}</h2>
       <p>${esc(p.description)}</p>
       <p>Method: ${esc(p.method)}</p>

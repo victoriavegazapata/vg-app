@@ -74,3 +74,11 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .foot a { color: var(--ink); text-decoration-color: var(--blueberry); text-decoration-thickness: 2px; }
 .stale { color: var(--blood-orange); font-weight: 600; }
 .results[hidden] { display: none; }
+.overview { border-top: 5px solid var(--blueberry); }
+.ov tbody tr { cursor: pointer; }
+.ov tbody tr:hover, .ov tbody tr:focus { background: var(--panel); outline: none; }
+.ov th.grp { text-align: left; border-bottom: 2px solid var(--line); }
+.ov th.grp.nc { border-bottom-color: var(--bubblegum); }
+.ov th.grp.fc, .ov td.fc, .ov th.fc { border-left: 2px solid var(--blood-orange); background: #fffaf6; }
+.back { color: var(--ink); text-decoration-color: var(--blueberry); font-size: 14px; }
+@media (max-width: 700px) { .ov { font-size: 13px; } .ov th, .ov td { padding: 4px; } }
