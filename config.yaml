@@ -111,6 +111,12 @@ forecast:
   # Rain for R: MRMS up to its last posted hour, then NWM short-range forecast rain (same masks).
   rain_after_last_mrms: "NWM short-range forecast"
   # The forecast ends at the last hour of the NWM short-range cycle (f048).
+  # Forecast hours later than this many hours after "now" are shaded on the charts with the label below
+  # (brief: beyond ~2 h the forecast mainly reflects the forecast rain).
+  reliable_horizon_h: 2
+  horizon_label: "less reliable – not tested"
+  # Shown next to the chart legend when some forecast hours use the dry-day rule (open circles)
+  dry_day_marker_note: "R = 1 when upstream 24-h rain < 2 mm (method rule); the step is from the rule, not from rain."
   # The R = 1 rule stays as the method says (upstream 24-h rain < 2 mm, or rain missing -> R = 1).
   # A forecast peak at an hour that uses this default is flagged on the page with this note:
   dry_day_peak_note: >-

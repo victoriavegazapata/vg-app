@@ -12,6 +12,10 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = (x, d = 0) => (x === null || x === undefined ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }));
 const when = (t) => (t ? t.replace("T", " ") + " " + DATA.local_time : "—");
+// A range "lo–hi"; one value when both round to the same number (e.g. "9", not "9–9")
+const rng = (lo, hi, d = 0) => { const a = fmt(lo, d), b = fmt(hi, d); return a === b ? a : `${a}–${b}`; };
+// Find a point from the link: exact id (#rio-nigua-confluence) or one word of it (#nigua, #arecibo)
+const findPoint = (h) => DATA.points.find((p) => p.id === h) || DATA.points.find((p) => p.id.split("-").includes(h));
 const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
 
 // ---------- load: draw the map first, then add the points when the data file arrives
@@ -33,9 +37,9 @@ function start() {
   addPoints();
   buildSearch();
   buildFooter();
-  const id = decodeURIComponent(location.hash.slice(1));
-  if (DATA.points.some((p) => p.id === id)) show(id); else overview();
-  window.addEventListener("hashchange", () => { const h = decodeURIComponent(location.hash.slice(1)); if (h) show(h); else overview(); });
+  const route = () => { const p = findPoint(decodeURIComponent(location.hash.slice(1)).toLowerCase()); if (p) show(p.id); else overview(); };
+  route();
+  window.addEventListener("hashchange", route);
 }
 
 // ---------- overview of all points (shown until a point is picked)
@@ -44,18 +48,19 @@ function overview() {
   MAP.flyTo([18.22, -66.4], 9, { duration: 0.6 });  // back to the whole island
   const rows = DATA.points.map((p) => {
     const n = p.nowcast.now, k = p.forecast.peak, test = p.kind === "test";
-    const flow = test ? `${fmt(n.vg_q)} cfs` : `${fmt(n.vg_low)}–${fmt(n.vg_high)} cfs`;
+    const flow = test ? `${fmt(n.vg_q)} cfs` : `${rng(n.vg_low, n.vg_high)} cfs`;
     const level = test
       ? (n.vg_h_hand === null && n.vg_q !== null ? "below HAND table" : `${fmt(n.vg_h_hand, 2)} ft`)
-      : (n.below_table ? `&lt; ${fmt(p.hand_min_depth_m, 2)} m` : `${fmt(n.depth_low, 2)}–${fmt(n.depth_high, 2)} m`);
+      : (n.below_table ? `&lt; ${fmt(p.hand_min_depth_m, 2)} m` : `${rng(n.depth_low, n.depth_high, 2)} m`);
     const obs = test ? `${fmt(n.usgs_q)} cfs` : "no gage";
-    const peak = test ? `${fmt(k.vg_q)} cfs` : `${fmt(k.vg_low)}–${fmt(k.vg_high)} cfs`;
+    const peak = test ? `${fmt(k.vg_q)} cfs` : `${rng(k.vg_low, k.vg_high)} cfs`;
+    const flag = k.dry_day ? ` <span class="flagmark" title="${esc(DATA.forecast_info.dry_day_note)}">⚑ dry-day rule</span>` : "";
     return `<tr data-id="${p.id}" tabindex="0">
       <td><strong>${esc(p.name)}</strong><br><small>${test ? "Test point" : "No gage (range)"}</small></td>
       <td class="num">${flow}<br><small>${when(n.vg_time).replace(/^\d{4}-/, "")}</small></td>
       <td class="num">${level}</td>
       <td class="num">${obs}</td>
-      <td class="num fc">${peak}${k.dry_day ? " ⚑" : ""}<br><small>${when(k.time).replace(/^\d{4}-/, "")}</small></td>
+      <td class="num fc">${peak}${flag}<br><small>${when(k.time).replace(/^\d{4}-/, "")}</small></td>
     </tr>`;
   }).join("");
   $("#panel").innerHTML = `
@@ -69,7 +74,7 @@ function overview() {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p class="note">⚑ = forecast peak comes from the dry-day rule (R = 1), not from forecast rain. Forecast: NWM cycle ${esc(DATA.forecast_info.nwm_cycle_utc)}.
+      <p class="note"><strong>⚑ dry-day rule:</strong> ${esc(DATA.forecast_info.dry_day_note)} Forecast: NWM cycle ${esc(DATA.forecast_info.nwm_cycle_utc)}.
         Water level at test points is in ft on the USGS gage datum; at points without a gage, depth above the DEM channel in m.</p>
     </section>`;
   document.querySelectorAll(".ov tbody tr").forEach((tr) => {
@@ -124,8 +129,9 @@ function buildSearch() {
 
 // ---------- point panel
 function show(id) {
-  const p = DATA.points.find((x) => x.id === id);
+  const p = findPoint(id);
   if (!p) return;
+  id = p.id;
   document.querySelectorAll("#results li").forEach((li) => li.classList.toggle("active", li.dataset.id === id));
   MAP.flyTo(p.lat_lon, 11, { duration: 0.6 });
   for (const [k, m] of Object.entries(MARKERS)) m.setStyle({ radius: k === id ? 12 : 9 });
@@ -150,6 +156,7 @@ function show(id) {
       <div class="warn"><strong>Experimental, not tested.</strong> Kept apart from the nowcast. Upstream flow is held at its last measured value;
         rain after the last MRMS hour is the NWM short-range forecast rain. ${esc(DATA.forecast_info.known_weakness)}</div>
       ${p.forecast.peak.dry_day ? `<div class="flag"><strong>Peak flag:</strong> ${esc(DATA.forecast_info.dry_day_note)}</div>` : ""}
+      ${p.forecast.dry_day.some(Boolean) ? `<p class="note marker-note"><span class="ring"></span> Open circles = hours using the dry-day rule: ${esc(DATA.forecast_info.dry_day_marker_note)}</p>` : ""}
       <div id="fc-flow" class="chart"></div>
       <div id="fc-stage" class="chart"></div>
       <div class="tables">${peakTable(p)}${cycleTable(p)}</div>
@@ -174,10 +181,10 @@ function nowTable(p) {
     </table>`;
   }
   const d0 = fmt(p.hand_min_depth_m, 2);
-  const depth = n.below_table ? (n.depth_high === null ? `&lt; ${d0} m` : `&lt; ${d0} to ${fmt(n.depth_high, 2)} m`) : `${fmt(n.depth_low, 2)} to ${fmt(n.depth_high, 2)} m`;
+  const depth = n.below_table ? (n.depth_high === null ? `&lt; ${d0} m` : `&lt; ${d0} to ${fmt(n.depth_high, 2)} m`) : `${rng(n.depth_low, n.depth_high, 2)} m`;
   return `<table><caption>Value now</caption>
     <tr><th>Source</th><th>Flow</th><th>Depth above DEM channel</th><th>Hour</th></tr>
-    <tr><td>Virtual gage range</td><td class="num">${fmt(n.vg_low)}–${fmt(n.vg_high)} cfs<br><small>typical error ${fmt(n.band_low)}–${fmt(n.band_high)}</small></td><td class="num">${depth}</td><td>${when(n.vg_time)}</td></tr>
+    <tr><td>Virtual gage range</td><td class="num">${rng(n.vg_low, n.vg_high)} cfs<br><small>typical error ${rng(n.band_low, n.band_high)}</small></td><td class="num">${depth}</td><td>${when(n.vg_time)}</td></tr>
     <tr><td>NWM Open Loop</td><td class="num">${fmt(n.nwm_ol_q)} cfs</td><td>—</td><td>${when(n.nwm_ol_time)}</td></tr>
   </table>`;
 }
@@ -192,7 +199,7 @@ function peakTable(p) {
   const flag = k.dry_day ? " <strong>(dry-day rule, see flag)</strong>" : "";
   const vg = p.kind === "test"
     ? `<tr><td>Virtual gage forecast</td><td class="num">${fmt(k.vg_q)} cfs${flag}<br>${k.vg_h_hand === null ? "below HAND table" : fmt(k.vg_h_hand, 2) + " ft (HAND)"}, ${fmt(k.vg_h_usgs, 2)} ft (USGS rating)</td><td>${when(k.time)}<br><small>${esc(k.hour_type)}</small></td></tr>`
-    : `<tr><td>Virtual gage forecast range</td><td class="num">${fmt(k.vg_low)}–${fmt(k.vg_high)} cfs${flag}<br><small>typical error ${fmt(k.band_low)}–${fmt(k.band_high)}</small></td><td>${when(k.time)}<br><small>${esc(k.hour_type)}</small></td></tr>`;
+    : `<tr><td>Virtual gage forecast range</td><td class="num">${rng(k.vg_low, k.vg_high)} cfs${flag}<br><small>typical error ${rng(k.band_low, k.band_high)}</small></td><td>${when(k.time)}<br><small>${esc(k.hour_type)}</small></td></tr>`;
   return `<table><caption>Expected peak</caption><tr><th>Source</th><th>Peak</th><th>Time</th></tr>${vg}
     <tr><td>NWM short-range</td><td class="num">${fmt(s.q)} cfs</td><td>${when(s.time)}</td></tr></table>`;
 }
@@ -207,9 +214,9 @@ function cycleTable(p) {
 
 // ---------- charts
 const LAYOUT = (ytitle) => ({
-  margin: { l: 58, r: 12, t: 36, b: 48 }, height: 320, hovermode: "x unified",
+  margin: { l: 58, r: 12, t: 36, b: 52 }, height: 330, hovermode: "x unified",
   font: { family: "system-ui, sans-serif", size: 12, color: C.ink },
-  xaxis: { type: "date", title: { text: `Time (${DATA.local_time}, UTC−4)` }, gridcolor: "#eee" },
+  xaxis: { type: "date", title: { text: `Time (${DATA.local_time}, UTC−4)` }, gridcolor: "#eee", nticks: 6, tickangle: 0 },
   yaxis: { title: { text: ytitle }, gridcolor: "#eee", rangemode: "tozero", separatethousands: true },
   legend: { orientation: "h", x: 0, y: 1.02, yanchor: "bottom", font: { size: 11 } },  // legend above the chart
   paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -287,11 +294,17 @@ function drawForecast(p) {
     ls = LAYOUT("Depth above DEM channel (m)");
     stage = band(t, f.depth_low, f.depth_high, "Virtual gage forecast depth range", C.orange, 0.45);
   }
-  if (shade.length) {
-    ly.shapes = shade;
-    ly.annotations = [{ xref: "x", yref: "paper", x: known[0], y: 1, yanchor: "bottom", showarrow: false, text: "upstream flow already measured", font: { size: 10, color: C.grape } }];
-    ls.shapes = [...(ls.shapes || []), ...shade];
-  }
+  // grey shade after "now + horizon" (config: forecast.reliable_horizon_h): less reliable, not tested
+  const fi = DATA.forecast_info, h0 = shiftH(DATA.now, fi.reliable_horizon_h);
+  const late = [{ type: "rect", xref: "x", yref: "paper", x0: h0, x1: t[t.length - 1], y0: 0, y1: 1, fillcolor: rgba(C.muted, 0.09), line: { width: 0 }, layer: "below" }];
+  const lateNote = { xref: "paper", yref: "paper", x: 0.995, y: 0.98, xanchor: "right", yanchor: "top", showarrow: false, bgcolor: "rgba(255,255,255,0.75)",
+    text: `After +${fi.reliable_horizon_h} h: ${esc(fi.horizon_label)}`, font: { size: 10, color: C.muted } };
+  const knownNote = known.length ? [{ xref: "x", yref: "paper", x: known[0], y: 0.9, xanchor: "left", yanchor: "top", showarrow: false,
+    text: "upstream flow already measured", font: { size: 10, color: C.grape } }] : [];
+  ly.shapes = [...shade, ...late];
+  ly.annotations = [lateNote, ...knownNote];
+  ls.shapes = [...(ls.shapes || []), ...shade, ...late];
+  ls.annotations = [...(ls.annotations || []), lateNote];
   Plotly.newPlot("fc-flow", flow, ly, CONFIG);
   Plotly.newPlot("fc-stage", stage, ls, CONFIG);
 }

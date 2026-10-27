@@ -59,8 +59,8 @@ h1, h2, h3 { line-height: 1.2; }
 .note { color: var(--muted); font-size: 13px; margin: 6px 0; }
 .flag { background: #fff0f5; border-left: 4px solid var(--bubblegum); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 14px; }
 
-.chart { width: 100%; height: 300px; }
-.tables { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.chart { width: 100%; height: 330px; margin-bottom: 14px; }
+.tables { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
 @media (max-width: 700px) { .tables { grid-template-columns: 1fr; } }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -82,3 +82,6 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .ov th.grp.fc, .ov td.fc, .ov th.fc { border-left: 2px solid var(--blood-orange); background: #fffaf6; }
 .back { color: var(--ink); text-decoration-color: var(--blueberry); font-size: 14px; }
 @media (max-width: 700px) { .ov { font-size: 13px; } .ov th, .ov td { padding: 4px; } }
+.flagmark { display: inline-block; font-size: 12px; font-weight: 600; color: var(--blood-orange); white-space: nowrap; cursor: help; }
+.marker-note { margin: 6px 0 0; }
+.ring { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--blood-orange); border-radius: 50%; background: #fff; vertical-align: -1px; }
