@@ -20,8 +20,11 @@ A web page where you search or click one of 6 points in Puerto Rico and see:
 
 ## Run it on your Mac
 
+The MRMS reader needs the ecCodes library (on Victoria's Mac it comes with conda; on GitHub, from Ubuntu's `libeccodes0`).
+
 ```bash
 pip install -r requirements.txt
+pip install eccodes==2.49.0
 python run_update.py
 python -m http.server 8765 --directory site
 ```

@@ -24,12 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
+      # GRIB reader (for MRMS) from Ubuntu's own packages; the pip bundle clashes with pyproj's map-projection library
+      - run: sudo apt-get update -q && sudo apt-get install -y -q libeccodes0
       - run: pip install -r requirements.txt
+      - run: pip install --no-deps eccodes==2.49.0   # uses Ubuntu's libeccodes0, not the eccodeslib bundle
       - name: Fetch data and compute nowcast + forecast
         run: python run_update.py
         env:
