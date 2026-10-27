@@ -13,6 +13,7 @@ low_flow_note: "Tested only on flood peaks of 1,000 cfs or more; low flows are n
 low_flow_display:
   threshold_cfs: 1000
   note: "Low flow – outside the tested range. Small upstream pulses may arrive later and smaller than shown."
+  tag: "(low flow, not tested)"     # shown next to virtual-gage numbers below the threshold in the tables
 recipes_url: "https://claude.ai/artifact/12TXJuMpVARH1Wz7w1XRpH"
 local_time: {name: "AST", utc_offset_h: -4}   # Puerto Rico, no daylight saving
 

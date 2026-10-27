@@ -48,12 +48,12 @@ function overview() {
   MAP.flyTo([18.22, -66.4], 9, { duration: 0.6 });  // back to the whole island
   const rows = DATA.points.map((p) => {
     const n = p.nowcast.now, k = p.forecast.peak, test = p.kind === "test";
-    const flow = test ? `${fmt(n.vg_q)} cfs` : `${rng(n.vg_low, n.vg_high)} cfs`;
+    const flow = (test ? `${fmt(n.vg_q)} cfs` : `${rng(n.vg_low, n.vg_high)} cfs`) + lowTag(test ? n.vg_q : n.vg_high);
     const level = test
       ? (n.vg_h_hand === null && n.vg_q !== null ? "below HAND table" : `${fmt(n.vg_h_hand, 2)} ft`)
       : (n.below_table ? `&lt; ${fmt(p.hand_min_depth_m, 2)} m` : `${rng(n.depth_low, n.depth_high, 2)} m`);
     const obs = test ? `${fmt(n.usgs_q)} cfs` : "no gage";
-    const peak = test ? `${fmt(k.vg_q)} cfs` : `${rng(k.vg_low, k.vg_high)} cfs`;
+    const peak = (test ? `${fmt(k.vg_q)} cfs` : `${rng(k.vg_low, k.vg_high)} cfs`) + lowTag(test ? k.vg_q : k.vg_high);
     const flag = k.dry_day ? ` <span class="flagmark" title="${esc(DATA.forecast_info.dry_day_note)}">⚑ dry-day rule</span>` : "";
     return `<tr data-id="${p.id}" tabindex="0">
       <td><strong>${esc(p.name)}</strong><br><small>${test ? "Test point" : "No gage (range)"}</small></td>
@@ -177,7 +177,7 @@ function nowTable(p) {
   if (p.kind === "test") {
     return `<table><caption>Value now</caption>
       <tr><th>Source</th><th>Flow</th><th>Water level</th><th>Hour</th></tr>
-      <tr><td>Virtual gage</td><td class="num">${fmt(n.vg_q)} cfs</td><td class="num">${n.vg_h_hand === null && n.vg_q !== null ? "below HAND table" : fmt(n.vg_h_hand, 2) + " ft"} (HAND)<br>${fmt(n.vg_h_usgs, 2)} ft (USGS rating)</td><td>${when(n.vg_time)}</td></tr>
+      <tr><td>Virtual gage</td><td class="num">${fmt(n.vg_q)} cfs${lowTag(n.vg_q)}</td><td class="num">${n.vg_h_hand === null && n.vg_q !== null ? "below HAND table" : fmt(n.vg_h_hand, 2) + " ft"} (HAND)<br>${fmt(n.vg_h_usgs, 2)} ft (USGS rating)</td><td>${when(n.vg_time)}</td></tr>
       <tr><td>USGS observed</td><td class="num">${fmt(n.usgs_q)} cfs</td><td class="num">${fmt(n.usgs_h, 2)} ft</td><td>${when(n.usgs_time)}</td></tr>
       <tr><td>NWM Open Loop</td><td class="num">${fmt(n.nwm_ol_q)} cfs</td><td>—</td><td>${when(n.nwm_ol_time)}</td></tr>
     </table>`;
@@ -186,7 +186,7 @@ function nowTable(p) {
   const depth = n.below_table ? (n.depth_high === null ? `&lt; ${d0} m` : `&lt; ${d0} to ${fmt(n.depth_high, 2)} m`) : `${rng(n.depth_low, n.depth_high, 2)} m`;
   return `<table><caption>Value now</caption>
     <tr><th>Source</th><th>Flow</th><th>Depth above DEM channel</th><th>Hour</th></tr>
-    <tr><td>Virtual gage range</td><td class="num">${rng(n.vg_low, n.vg_high)} cfs<br><small>typical error ${rng(n.band_low, n.band_high)}</small></td><td class="num">${depth}</td><td>${when(n.vg_time)}</td></tr>
+    <tr><td>Virtual gage range</td><td class="num">${rng(n.vg_low, n.vg_high)} cfs${lowTag(n.vg_high)}<br><small>typical error ${rng(n.band_low, n.band_high)}</small></td><td class="num">${depth}</td><td>${when(n.vg_time)}</td></tr>
     <tr><td>NWM Open Loop</td><td class="num">${fmt(n.nwm_ol_q)} cfs</td><td>—</td><td>${when(n.nwm_ol_time)}</td></tr>
   </table>`;
 }
@@ -274,6 +274,10 @@ function vgBand(x, lo, hi, low, name, color, alpha) {
 }
 // Depth band low edge: where the low end is below the HAND table (no value), shade down to 0 m (true depth is < table minimum)
 const depthLow = (lo, hi) => lo.map((v, i) => (v === null && hi[i] !== null ? 0 : v));
+
+// Small tag next to a virtual-gage number below the low-flow threshold (config: low_flow_display.tag)
+const lowTag = (q) => (q !== null && q !== undefined && q < DATA.low_flow_display.threshold_cfs
+  ? ` <span class="lowtag">${esc(DATA.low_flow_display.tag)}</span>` : "");
 
 function lowNote(low) {
   return low.some(Boolean) ? `<p class="note lowflow"><span class="dashline"></span> Faded dashed parts: ${esc(DATA.low_flow_display.note)}</p>` : "";

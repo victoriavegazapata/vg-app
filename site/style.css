@@ -87,3 +87,5 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .ring { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--blood-orange); border-radius: 50%; background: #fff; vertical-align: -1px; }
 .lowflow { margin: 6px 0 0; }
 .dashline { display: inline-block; width: 22px; border-top: 2px dashed var(--muted); vertical-align: 3px; opacity: .8; }
+.lowtag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+td.num .lowtag { white-space: normal; }
