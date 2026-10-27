@@ -36,7 +36,7 @@ h1, h2, h3 { line-height: 1.2; }
 .results li:first-child { border-top: 0; }
 .results li:hover, .results li.active { background: var(--panel); }
 .results li small { color: var(--muted); display: block; }
-#map { height: 380px; border-radius: 10px; border: 1px solid var(--line); }
+#map { height: 460px; border-radius: 10px; border: 1px solid var(--line); }
 @media (max-width: 860px) { #map { height: 300px; } }
 .map-legend { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); margin-top: 8px; }
 .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
@@ -73,3 +73,4 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .foot p { margin: 4px 0 10px; max-width: 1000px; }
 .foot a { color: var(--ink); text-decoration-color: var(--blueberry); text-decoration-thickness: 2px; }
 .stale { color: var(--blood-orange); font-weight: 600; }
+.results[hidden] { display: none; }

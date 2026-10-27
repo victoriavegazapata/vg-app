@@ -73,9 +73,13 @@ function buildSearch() {
       : "<li>No point matches. Try a river name or a USGS gage number.</li>";
     list.querySelectorAll("li[data-id]").forEach((li) => li.addEventListener("click", () => { location.hash = li.dataset.id; }));
   };
-  box.addEventListener("input", render);
-  box.addEventListener("keydown", (e) => { if (e.key === "Enter") { const li = list.querySelector("li[data-id]"); if (li) location.hash = li.dataset.id; } });
+  // The list shows only while typing, so the map stays right under the search box
+  const toggle = () => { list.hidden = box.value.trim() === ""; };
+  box.addEventListener("input", () => { render(); toggle(); });
+  box.addEventListener("keydown", (e) => { if (e.key === "Enter") { const li = list.querySelector("li[data-id]"); if (li) { location.hash = li.dataset.id; box.value = ""; toggle(); } } });
+  list.addEventListener("click", () => { box.value = ""; toggle(); });
   render();
+  toggle();
 }
 
 // ---------- point panel
