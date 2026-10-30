@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from vg import fetch, forecast, live, nowcast
+from vg import fetch, forecast, live, nowcast, stage
 
 
 def _num(x, d=2):
@@ -33,6 +33,51 @@ def _when(t, cfg):
 
 def _slug(name):
     return name.lower().replace("í", "i").replace(" ", "-")
+
+
+def _nwps(lid_site, cfg):
+    """NWS facts for the chart, read only from the saved NWPS reply (inputs/nwps_raw/<USGS site>.json)."""
+    d = json.loads((cfg["nws_chart"]["nwps_dir"] / f"{lid_site}.json").read_text())
+    cats = {k: {"stage": v["stage"], "flow": v["flow"]} for k, v in d["flood"]["categories"].items()}
+    crests = d["flood"]["crests"]["historic"]
+    top = max(crests, key=lambda c: c["stage"]) if crests and d["lid"] not in cfg["nws_chart"]["hide_record_crest"] else None
+    datum = d["datums"]["vertical"]["value"]
+    return {"lid": d["lid"], "name": d["name"], "reach_id": d["reachId"],
+            "datum": {"abbrev": datum[0]["abbrev"], "value_ft": datum[0]["value"]} if datum else None,
+            "low_ft": d["lowThreshold"]["value"], "categories": cats,
+            "table_note": cfg["nws_chart"].get("category_table_notes", {}).get(d["lid"]),
+            "record": {"stage": top["stage"], "flow": top["flow"], "date": top["occurredTime"][:10]} if top else None}
+
+
+def axis_rating(name, cfg):
+    """Stage (ft) → flow (cfs) table for the chart's right axis.
+    Test points: current USGS rating. Points without a gage: HAND rating at the Manning n in config (nws_chart.right_axis_n),
+    depth above the DEM channel converted to ft."""
+    if name in cfg["test_points"]:
+        pt = cfg["test_points"][name]
+        r = stage.read_usgs_rating(cfg["stage"]["usgs_ratings_file"], pt["gage_point"]["site"]).sort_values("s")
+        s = np.round(np.arange(np.ceil(r.s.min() * 10) / 10, r.s.max(), 0.1), 2)
+        return {"stage_ft": s.tolist(), "q_cfs": np.round(np.interp(s, r.s, r.q), 2).tolist(),
+                "label": f"current USGS rating {pt['usgs_rating_id']}"}
+    pt, ft = cfg["no_gage_points"][name], cfg["nws_chart"]["m_to_ft"]
+    n = cfg["nws_chart"]["right_axis_n"][name]
+    h = stage.HandRating(pt["hand_geometry"], pt["hand_slope"], n, cfg["stage"])
+    s = np.round(np.arange(np.ceil(h.min_depth_m * ft * 10) / 10, h.depth[-1] * ft, 0.2), 2)
+    return {"stage_ft": s.tolist(), "q_cfs": np.round(np.interp(s / ft, h.depth, h.q_cfs), 2).tolist(),
+            "label": f"HAND rating, Manning n {n}"}
+
+
+def chart_extras(cfg):
+    """Per point: NWS facts (test points) and the right-axis rating. Read from saved files only, no live data."""
+    out = {}
+    for name in [*cfg["test_points"], *cfg["no_gage_points"]]:
+        tp = cfg["test_points"].get(name)
+        out[_slug(name)] = {"nws_style": name in cfg["nws_chart"]["points"],
+                            "nwps": _nwps(tp["gage_point"]["site"], cfg) if tp else None,
+                            "axis_rating": axis_rating(name, cfg)}
+    c = cfg["nws_chart"]
+    info = {k: c[k] for k in ("band_colours", "table_colours", "observed_shade", "header_colours", "zoom_buttons_h", "m_to_ft", "data_source")}
+    return out, info
 
 
 def build(cfg, now):
@@ -136,7 +181,11 @@ def build(cfg, now):
             },
         })
 
+    extras, chart_info = chart_extras(cfg)
+    for p in points:
+        p["chart"] = extras[p["id"]]
     return {
+        "chart_info": chart_info,
         "generated": _when(pd.Timestamp.now(tz="UTC"), cfg), "now": _when(now, cfg),
         "local_time": cfg["local_time"]["name"], "method_version": cfg["method_version"],
         "status_label": cfg["status_label"], "low_flow_note": cfg["low_flow_note"],

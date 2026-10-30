@@ -88,4 +88,17 @@ caption { text-align: left; font-weight: 600; padding-bottom: 4px; }
 .lowflow { margin: 6px 0 0; }
 .dashline { display: inline-block; width: 22px; border-top: 2px dashed var(--muted); vertical-align: 3px; opacity: .8; }
 .lowtag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-td.num .lowtag { white-space: normal; }
+td.num .lowtag { display: block; white-space: normal; }   /* own line under the number, so it never runs into the next column */
+
+/* NWS-style charts (config: nws_chart) */
+.nwstitle { text-align: center; margin: 10px 0 0; line-height: 1.3; }
+.nwstitle small { color: var(--muted, #6b6068); }
+.nwschart { width: 100%; height: 760px; }
+.zoom { font-size: 13px; color: #666; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.zoom button { border: 1px solid #ccc; background: #f7f7f7; border-radius: 4px; padding: 2px 9px; cursor: pointer; font: inherit; }
+.zoom button:hover { background: #e6e9ff; }
+.scalebox { margin-left: 12px; color: #333; }
+.chartfoot { font-size: 12px; color: #555; margin: 2px 0 10px; }
+.cattable { width: 100%; margin-top: 6px; }
+.cattable .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.catnote { border-left: 3px solid #EF6F3C; padding-left: 8px; }

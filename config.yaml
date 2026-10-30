@@ -143,6 +143,32 @@ nws_stages:
   show_on_stage_charts: true
   labels: {action: "NWS action stage", minor: "NWS minor flood stage", moderate: "NWS moderate flood stage", major: "NWS major flood stage"}
 
+# NWS-style charts (Chart_Style_Brief_NWS, option b). Drawing only: no method change.
+# Category stages/flows, record crest, reach ID, datum and low threshold are read from the saved NWPS replies.
+nws_chart:
+  points: ["Gurabo", "Ciales", "Loíza Y1", "Loíza Y2", "Arecibo junction", "Río Nigua confluence"]   # points drawn in the NWS style
+  nwps_dir: "{inputs_dir}/nwps_raw"   # <USGS site>.json, saved 2026-10-27
+  # Colours read from https://water.noaa.gov/gauges/SALP4#hg=official on 2026-10-29
+  band_colours:                       # chart background, from each stage up to the next
+    action: "rgb(255,255,231)"
+    minor: "rgb(254,245,228)"
+    moderate: "rgb(255,229,230)"
+    major: "rgb(252,233,254)"
+    low: "#D7BF8F"                    # below the low threshold
+  table_colours: {action: "rgb(255,255,0)", minor: "rgb(255,153,0)", moderate: "rgb(255,0,0)", major: "rgb(204,51,255)"}
+  observed_shade: "#f0f0f0"           # grey over the observed hours (left of the latest-observation line)
+  header_colours: {observed: "#5e85c0", forecast: "#8c6bb0"}
+  zoom_buttons_h: [24, 48]            # buttons 1d, 2d (+ All); the app keeps only 48 h, so no 7d/14d
+  hide_record_crest: ["CIAP4"]        # NWPS lists 50 ft (1899) with flow 0 at Ciales; not drawn until checked
+  m_to_ft: 3.28084                    # depth above DEM channel at points without a gage, shown in ft
+  # Right-axis flows at points without a gage: HAND rating at one Manning n (approved 2026-10-29)
+  right_axis_n: {"Arecibo junction": 0.0311, "Río Nigua confluence": 0.040}
+  data_source: "US Geological Survey"
+  # Notes shown under a gage's flood-category table (text from Victoria, 2026-10-30; numbers unchanged).
+  # Rating 27.0 start date from inputs/ratings/ratings_raw/50035000.exsa.rdb (RATING_DATETIME BEGIN=20260902).
+  category_table_notes:
+    CIAP4: "NWPS category flows differ from the current USGS rating 27.0 (in effect since 2026-09-02) by −19 % to −25 %. NWPS may still use an earlier rating; not yet confirmed."
+
 # ---------------------------------------------------------------------
 # Points. Areas are counts of NWM 1-km cells in the basin masks (km²); mask files are in inputs/masks/.
 # r = (A_point - A_a - A_b) / (A_a + A_b)

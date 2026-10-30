@@ -16,5 +16,6 @@ def load(path=APP_DIR / "config.yaml"):
         for pt in cfg[group].values():
             pt["hand_geometry"] = Path(pt["hand_geometry"].format(inputs_dir=inputs))
             pt["mask_path"] = inputs / "masks" / pt["mask_file"]
-    cfg["stage"]["usgs_ratings_file"] = Path(cfg["stage"]["usgs_ratings_file"].format(inputs_dir=inputs))
+    cfg["nws_chart"]["nwps_dir"] = Path(cfg["nws_chart"]["nwps_dir"].format(inputs_dir=inputs))
+    cfg["stage"]["usgs_ratings_file"] =Path(cfg["stage"]["usgs_ratings_file"].format(inputs_dir=inputs))
     return cfg
